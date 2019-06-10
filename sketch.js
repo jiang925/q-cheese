@@ -7,6 +7,7 @@ const DEBUG = false;
 const LEARNING_RATE = 0.2;
 const REWARD_DISCOUNT_FACTOR = 0.99;
 const INITIAL_WEIGHT = 0.2;
+const FRAME_RATE = 30;
 
 let grid;
 let mouse;
@@ -18,6 +19,8 @@ let generation;
 let bestSteps;
 let generationDiv;
 let bestStepsDiv;
+let frameRateDiv;
+let ticking = false;
 
 class Cell {
   constructor(x, y) {
@@ -143,11 +146,12 @@ function learn() {
 }
 
 function setup() {
-  frameRate(100);
+  frameRate(FRAME_RATE);
   createCanvas(600, 600);
   background(0);
   generationDiv = createDiv();
   bestStepsDiv = createDiv();
+  frameRateDiv = createDiv();
   init();
 }
 
@@ -183,24 +187,34 @@ function init() {
   grid[nx-1][ny-1].target = true;
   mouse = new Mouse(0, 0);
   generation = 0;
+  tick();
 }
 
-function draw() {
-  background(0);
-  
+function tick() {
+  ticking = true;
   if (mouse.dead) {
     learn();
     mouse = new Mouse(0, 0);
   }
   
   mouse.move();
+  ticking = false;
+  setTimeout(tick, 1);
+}
+
+function draw() {
+  background(0);
+  
+  generationDiv.html('Generation: ' + generation);
+  bestStepsDiv.html('Best Steps: ' + (bestSteps || 'N/A'));
+  frameRateDiv.html('Frame rate: ' + frameRate().toFixed(0));
+  
+  if (ticking) return;
+  
   for (let gs of grid) {
     for (let cell of gs) {
       cell.draw();
     }
   }
   mouse.draw();
-  
-  generationDiv.html('Generation: ' + generation);
-  bestStepsDiv.html('Best Steps: ' + (bestSteps || 'N/A'));
 }
