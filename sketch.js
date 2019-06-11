@@ -1,6 +1,6 @@
 'use strict';
 
-const RESOLUTION = 600/10;
+const RESOLUTION = 600/12;
 const RANDOM_MOVE_CHANCE = 0.05;
 const DEBUG = false;
 const LEARNING_RATE = 0.2;
@@ -12,7 +12,7 @@ let grid;
 let mouse;
 let worldGenerator;
 const rand = new Math.seedrandom(99);
-const wgrand = new Math.seedrandom(100);
+const wgrand = new Math.seedrandom(1001);
 const wrand = new Math.seedrandom(101);
 const mrand = new Math.seedrandom(102);
 let generation;
@@ -21,6 +21,12 @@ let generationDiv;
 let bestStepsDiv;
 let frameRateDiv;
 let ticking = false;
+
+const hash = c => c.x + ',' + c.y;
+const inGrid = (grid, x, y) => (grid.length && x < grid.length && x >= 0 && grid[x].length && y < grid[x].length && y >=0);
+const getNeighbors = (grid, x, y) => [[x-1,y],[x,y-1],[x+1,y],[x,y+1]].filter(coord => inGrid(grid, coord[0], coord[1])).map(coord => grid[coord[0]][coord[1]]);
+const getUnvisitedNeighbors = (visited, grid, x, y) => getNeighbors(grid, x, y).filter(c => !visited[hash(c)]);
+
 
 class Cell {
   constructor(x, y) {
@@ -61,12 +67,11 @@ class Cell {
   draw() {
     stroke(255);
     noFill();
-    rect(this.x * RESOLUTION, this.y * RESOLUTION, RESOLUTION, RESOLUTION);
-    this.neighbors.forEach(n => {
-      stroke(0);
+    getNeighbors(grid, this.x, this.y).filter(c => !this.neighbors.includes(c)).forEach(n => {
+      stroke(255);
       const diffX = n.x - this.x;
       const diffY = n.y - this.y;
-      if (DEBUG) console.log('erase wall between ', this, 'and', n);
+      if (DEBUG) console.log('draw wall between ', this, 'and', n);
       line(
         this.x * RESOLUTION + (diffX == 1 ? RESOLUTION : 0),
         this.y * RESOLUTION + (diffY == 1 ? RESOLUTION : 0),
@@ -151,11 +156,6 @@ class WorldGenerator {
       }
     }
 
-    const hash = c => c.x + ',' + c.y;
-    const inGrid = (x, y) => (grid.length && x < grid.length && x >= 0 && grid[x].length && y < grid[x].length && y >=0);
-    const getNeighbors = (grid, x, y) => [[x-1,y],[x,y-1],[x+1,y],[x,y+1]].filter(coord => inGrid(coord[0], coord[1])).map(coord => grid[coord[0]][coord[1]]);
-    const getUnvisitedNeighbors = (visited, grid, x, y) => getNeighbors(grid, x, y).filter(c => !visited[hash(c)]);
-
     let stack = [];
     let visited = {}; // "{x},{y}"
     let current = grid[0][0];
@@ -191,7 +191,8 @@ function learn() {
   let previous = mouse.reach;
   for (let i = mouse.path.length - 1; i >= 0; i--) {
     const current = mouse.path[i];
-    current.updateNeighbor(previous, (1 - LEARNING_RATE) * current.getNeighborWeight(previous) + LEARNING_RATE * reward * factor);
+    if (previous)
+      current.updateNeighbor(previous, (1 - LEARNING_RATE) * current.getNeighborWeight(previous) + LEARNING_RATE * (reward + factor * Math.max(...previous.table)));
     previous = current;
     if (DEBUG) {
       console.log('current', current);
